@@ -5,11 +5,26 @@ import aiohttp
 import re
 import os
 
-help = '''
-[上传作业]
+help = '''[上传作业 boss]
+boss：指几周目几王
+a1(指一周目一王)
+b5-1(指二周目五王非狂暴)
+b5-2(指二周目五王狂暴)
+如果五王无狂暴，请输入boss b5，以此类推
+
+[查作业 boss]
+boss：与上传指令相同
+
+[删作业 boss num]
+boss：与上传指令相同
+num：指第几个作业，使用查作业指令获取数字
+
+[关闭上传] 特殊情况下使用
+
+注：为防止乱用，除查作业指令以外，其它指令仅限于管理员使用
 '''
 
-sv = Service('pcr_clanwork', enable_on_default=True, visible=True)
+sv = Service('pcr_work', enable_on_default=True, visible=True, help_=help)
 
 BOSS = ['a1','a2','a3','a4','a5','a5-1','a5-2','b1','b2','b3','b4','b5','b5-1','b5-2','c1','c2','c3','c4','c5','c5-1','c5-2']
 
@@ -84,9 +99,10 @@ async def download(url, gid, bossnum):
         print(e)
         return False
 
-@sv.on_fullmatch('上传作业')
+@sv.on_prefix('上传作业')
 async def upload(bot, ev:CQEvent):
     gid = ev.group_id
+    msg = ev.message.extract_plain_text()
     if not priv.check_priv(ev, priv.ADMIN):
         await bot.finish(ev, '仅限管理员上传作业', at_sender=True)
     if not os.path.exists(R.img(f'clanwork/{gid}').path):
@@ -94,29 +110,23 @@ async def upload(bot, ev:CQEvent):
     if cw.get_on_off_upload_work(gid):
         upuid = cw.get_user(gid)
         await bot.finish(ev, f'[CQ:at,qq={upuid}] 正在上传作业，请等待上传完毕', at_sender=True)
+    if msg not in BOSS:
+        await bot.finish(ev, '请输入正确的boss')
     uid = ev.user_id
     cw.turn_upload_on(gid)
     cw.set_user(gid)
     cw.add_user(gid, uid)
-    await bot.send(ev, f'请在一分钟内上传指定BOSS作业，请输入boss\n例如：boss b1(代表二周目一王)\nboss b5-2（代表二周目五王狂暴）\n如果五王无狂暴，请输入boss b5', at_sender=True)
-    await asyncio.sleep(60)
-    
-
-@sv.on_prefix('boss')
-async def bossname(bot, ev:CQEvent):
-    gid = ev.group_id
-    uid = ev.user_id
-    if cw.get_on_off_upload_work(gid) and cw.get_user(gid) == uid:
-        msg = ev.message.extract_plain_text()
-        await bot.send(ev, f'请上传{msg}作业图片', at_sender=True)
-        cw.turn_upload_image_on(gid)
-        cw.add_work_name(gid, msg)
+    cw.add_work_name(gid, msg)
+    await bot.send(ev, f'请在30秒内上传{msg}作业图片', at_sender=True)
+    await asyncio.sleep(30)
+    await bot.send(ev, '结束上传')
+    cw.turn_upload_off(gid)
 
 @sv.on_message()
 async def work(bot, ev:CQEvent):
     gid = ev.group_id
     uid = ev.user_id
-    if cw.get_on_off_upload_image(gid) and cw.get_user(gid) == uid:
+    if cw.get_on_off_upload_work(gid) and cw.get_user(gid) == uid:
         ret = re.match(r"\[CQ:image,file=(.*),url=(.*)\]", str(ev.message))
         name = cw.get_work_name(gid)
         if not await download(ret.group(2), gid, name):
@@ -125,7 +135,6 @@ async def work(bot, ev:CQEvent):
             cw.turn_upload_image_off(gid)
         await bot.send(ev, f'{name}作业上传完毕', an_sender=True)
         cw.turn_upload_off(gid)
-        cw.turn_upload_image_off(gid)
 
 @sv.on_fullmatch('关闭上传')
 async def upload_off(bot, ev:CQEvent):
@@ -134,7 +143,6 @@ async def upload_off(bot, ev:CQEvent):
         await bot.finish(ev, '为防止滥用，请联系群管理员关闭上传', at_sender=True)
     await bot.send(ev, '已强制关闭上传作业', at_sender=True)
     cw.turn_upload_off(gid)
-    cw.turn_upload_image_off(gid)
     
 @sv.on_prefix('查作业')
 async def qwork(bot, ev:CQEvent):
