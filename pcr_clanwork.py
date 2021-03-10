@@ -85,15 +85,21 @@ cw = clanwork()
 def get_list_num(gid, bossnum):
     workpath = R.img(f'clanwork/{gid}/{bossnum}').path
     path, dirs, files = next(os.walk(workpath))
-    return workpath, len(files)
+    name = 1
+    for file in os.listdir(workpath):
+        if int(file[:-4]) != name:
+            break;
+        else:
+            name += 1
+    return workpath, len(files), name
 
 async def download(url, gid, bossnum):
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as req:
-                workpath, name = get_list_num(gid, bossnum)
+                workpath, num, name = get_list_num(gid, bossnum)
                 chunk = await req.read()
-                open(os.path.join(f'{workpath}/{name + 1}.png'), 'wb').write(chunk)
+                open(os.path.join(f'{workpath}/{name}.png'), 'wb').write(chunk)
                 return True
     except Exception as e:
         print(e)
