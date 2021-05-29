@@ -131,6 +131,6 @@ async def delallwork(bot, ev:CQEvent):
         for file in os.listdir(dirpath):
             filepath = R.img(f'{dirpath}/{file}').path
             os.remove(filepath)
-            num += len(file)
+            num += 1
 
     await bot.send(ev, f'已删除所有作业，共计{num}份', at_sender=True)
