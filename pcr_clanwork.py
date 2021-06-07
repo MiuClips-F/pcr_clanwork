@@ -29,7 +29,7 @@ class clanwork():
 
     def makedir(self, gid):
         for item in BOSS:
-            RES = R.img(f'clanwork/{gid}/' + item)
+            RES = R.img('clanwork', str(gid), item)
             if not os.path.exists(RES.path):
                 os.makedirs(RES.path)
             self.state[item] = len(os.listdir(RES.path)) // 2
@@ -38,7 +38,7 @@ class clanwork():
 cw = clanwork()
 
 def get_list_num(gid, bossnum):
-    workpath = R.img(f'clanwork/{gid}/{bossnum}').path
+    workpath = R.img('clanwork', str(gid), bossnum).path
     files = next(os.walk(workpath))[2]
     worklist = os.listdir(workpath)
     worklist.sort(key = lambda x: int(x[:-4]))
@@ -56,7 +56,7 @@ async def download(url, gid, bossnum):
             async with session.get(url) as req:
                 workpath, num, name = get_list_num(gid, bossnum)
                 chunk = await req.read()
-                open(os.path.join(f'{workpath}/{name}.png'), 'wb').write(chunk)
+                open(os.path.join(workpath, f'{name}.png'), 'wb').write(chunk)
                 return True
     except Exception as e:
         print(e)
@@ -68,7 +68,7 @@ async def upload(bot, ev:CQEvent):
     msg = ev.message
     if not priv.check_priv(ev, priv.ADMIN):
         await bot.finish(ev, '仅限管理员上传作业', at_sender=True)
-    if not os.path.exists(R.img(f'clanwork/{gid}').path):
+    if not os.path.exists(R.img('clanwork', str(gid)).path):
         cw.makedir(gid)
     if len(msg) != 2:
         await bot.finish(ev, '参数错误', at_sender=True)
@@ -88,13 +88,13 @@ async def qwork(bot, ev:CQEvent):
     img = []
     gid = ev.group_id
     work = ev.message.extract_plain_text().strip().lower()
-    cpath = R.img(f'clanwork/{gid}/{work}').path
+    cpath = R.img('clanwork', str(gid), work).path
     num = get_list_num(gid, work)[1]
     if num == 0:
         await bot.finish(ev, f'没有找到{work}的作业')
     for file in os.listdir(cpath):
         fnum = file[:-4]
-        img.append(f'{fnum}：[CQ:image,file=file:///{cpath}/{file}]\n')
+        img.append(f'{fnum}：{R.img(cpath, file).cqcode}\n')
     msg = ''.join(img)
     await bot.send(ev, f'已找到{num}份{work}作业：\n{msg}', at_sender=True)
 
@@ -106,7 +106,7 @@ async def dwork(bot, ev:CQEvent):
         await bot.finish(ev, '请联系群管理删除作业', at_sender=True)
     bossnum = work[0]
     listnum = work[1]
-    path = R.img(f'clanwork/{gid}/{bossnum}/{listnum}.png').path
+    path = R.img('clanwork', str(gid), bossnum, f'{listnum}.png').path
     os.remove(path)
     await bot.send(ev, f'已删除{bossnum}第{listnum}个作业', at_sender=True)
     
@@ -124,12 +124,12 @@ async def delallwork(bot, ev:CQEvent):
     gid = ev.group_id
     if not priv.check_priv(ev, priv.SUPERUSER):
         await bot.finish(ev, '请联系超管删除作业', at_sender=True)
-    path = R.img(f'clanwork/{gid}').path
+    path = R.img(f'clanwork', str(gid)).path
     num = 0
     for dir in os.listdir(path):
-        dirpath = R.img(f'{path}/{dir}').path
+        dirpath = R.img(path, dir).path
         for file in os.listdir(dirpath):
-            filepath = R.img(f'{dirpath}/{file}').path
+            filepath = R.img(dirpath, file).path
             os.remove(filepath)
             num += 1
 
